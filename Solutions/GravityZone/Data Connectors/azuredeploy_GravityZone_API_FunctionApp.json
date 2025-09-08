@@ -1,0 +1,835 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.0",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.37.4.10188",
+      "templateHash": "15143005838476646552"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "The location where to deploy the resources"
+      }
+    },
+    "logAnalyticsWorkspaceName": {
+      "type": "string",
+      "metadata": {
+        "description": "Log Analytics workspace name"
+      }
+    },
+    "ingestionFunctionSchedule": {
+      "type": "string",
+      "defaultValue": "0 */5 * * * *",
+      "metadata": {
+        "description": "The schedule for the ingestion function"
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "The storage account name"
+      }
+    }
+  },
+  "variables": {
+    "vendorTag": "Bitdefender",
+    "applicationTag": "GravityZone Log Ingestion",
+    "dataCollectionEndpointName": "gz-sentinel-dce",
+    "dataCollectionRuleName": "gz-sentinel-dcr",
+    "ingestionFunctionHostingPlanName": "gz-ingestion-function-plan",
+    "ingestionFunctionName": "gz-ingestion-function",
+    "ingestionFunctionAppInsightsName": "gz-ingestion-function-ai",
+    "eventsStorageContainerName": "gzevents",
+    "ingestionFunctionPackageUrl": "https://raw.githubusercontent.com/bitdefender/Azure-Sentinel/master/Solutions/GravityZone/Data Connectors/function.zip",
+    "eventsTableName": "GzSecurityEvents_CL"
+  },
+  "resources": {
+    "logAnalyticsWorkspace": {
+      "existing": true,
+      "type": "Microsoft.OperationalInsights/workspaces",
+      "apiVersion": "2021-06-01",
+      "name": "[parameters('logAnalyticsWorkspaceName')]"
+    },
+    "storageAccount": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "storage-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "vendorTag": {
+            "value": "[variables('vendorTag')]"
+          },
+          "applicationTag": {
+            "value": "[variables('applicationTag')]"
+          },
+          "location": {
+            "value": "[resourceGroup().location]"
+          },
+          "storageAccountName": {
+            "value": "[parameters('storageAccountName')]"
+          },
+          "eventsStorageContainerName": {
+            "value": "[variables('eventsStorageContainerName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "languageVersion": "2.0",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "8514480310697294397"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "vendorTag": {
+              "type": "string"
+            },
+            "applicationTag": {
+              "type": "string"
+            },
+            "storageAccountName": {
+              "type": "string"
+            },
+            "eventsStorageContainerName": {
+              "type": "string"
+            }
+          },
+          "resources": {
+            "storageAccount": {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2023-01-01",
+              "name": "[parameters('storageAccountName')]",
+              "location": "[parameters('location')]",
+              "tags": {
+                "vendor": "[parameters('vendorTag')]",
+                "application": "[parameters('applicationTag')]"
+              },
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "kind": "StorageV2",
+              "properties": {
+                "accessTier": "Hot",
+                "allowBlobPublicAccess": false
+              }
+            },
+            "blobService": {
+              "type": "Microsoft.Storage/storageAccounts/blobServices",
+              "apiVersion": "2025-01-01",
+              "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+              "dependsOn": [
+                "storageAccount"
+              ]
+            },
+            "eventsStorageContainer": {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2025-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', parameters('eventsStorageContainerName'))]",
+              "properties": {
+                "immutableStorageWithVersioning": {
+                  "enabled": false
+                },
+                "publicAccess": "None"
+              },
+              "dependsOn": [
+                "blobService"
+              ]
+            }
+          },
+          "outputs": {
+            "key": {
+              "type": "securestring",
+              "value": "[listKeys('storageAccount', '2023-01-01').keys[0].value]"
+            }
+          }
+        }
+      }
+    },
+    "eventsTable": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "table-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "logAnalyticsWorkspaceName": {
+            "value": "[parameters('logAnalyticsWorkspaceName')]"
+          },
+          "eventsTableName": {
+            "value": "[variables('eventsTableName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "8040395931392710511"
+            }
+          },
+          "parameters": {
+            "eventsTableName": {
+              "type": "string"
+            },
+            "logAnalyticsWorkspaceName": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces/tables",
+              "apiVersion": "2023-09-01",
+              "name": "[format('{0}/{1}', parameters('logAnalyticsWorkspaceName'), parameters('eventsTableName'))]",
+              "properties": {
+                "schema": {
+                  "name": "[parameters('eventsTableName')]",
+                  "columns": [
+                    {
+                      "name": "TimeGenerated",
+                      "type": "datetime"
+                    },
+                    {
+                      "name": "company_id",
+                      "type": "string"
+                    },
+                    {
+                      "name": "module",
+                      "type": "string"
+                    },
+                    {
+                      "name": "computer_id",
+                      "type": "string"
+                    },
+                    {
+                      "name": "computer_fqdn",
+                      "type": "string"
+                    },
+                    {
+                      "name": "computer_name",
+                      "type": "string"
+                    },
+                    {
+                      "name": "product_installed",
+                      "type": "string"
+                    },
+                    {
+                      "name": "computer_ip",
+                      "type": "string"
+                    },
+                    {
+                      "name": "data",
+                      "type": "dynamic"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "dataCollectionEndpoint": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "dce-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "vendorTag": {
+            "value": "[variables('vendorTag')]"
+          },
+          "applicationTag": {
+            "value": "[variables('applicationTag')]"
+          },
+          "location": {
+            "value": "[resourceGroup().location]"
+          },
+          "dataCollectionEndpointName": {
+            "value": "[variables('dataCollectionEndpointName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "8492894627216923622"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "dataCollectionEndpointName": {
+              "type": "string"
+            },
+            "vendorTag": {
+              "type": "string"
+            },
+            "applicationTag": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Insights/dataCollectionEndpoints",
+              "apiVersion": "2023-03-11",
+              "name": "[parameters('dataCollectionEndpointName')]",
+              "location": "[parameters('location')]",
+              "tags": {
+                "vendor": "[parameters('vendorTag')]",
+                "application": "[parameters('applicationTag')]"
+              },
+              "properties": {
+                "networkAcls": {
+                  "publicNetworkAccess": "Enabled"
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Insights/dataCollectionEndpoints', parameters('dataCollectionEndpointName'))]"
+            },
+            "endpoint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Insights/dataCollectionEndpoints', parameters('dataCollectionEndpointName')), '2023-03-11').logsIngestion.endpoint]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "eventsTable"
+      ]
+    },
+    "dataCollectionRule": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "dcr-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "vendorTag": {
+            "value": "[variables('vendorTag')]"
+          },
+          "applicationTag": {
+            "value": "[variables('applicationTag')]"
+          },
+          "location": {
+            "value": "[resourceGroup().location]"
+          },
+          "logAnalyticsWorkspaceId": {
+            "value": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName'))]"
+          },
+          "dataCollectionEndpointId": {
+            "value": "[reference('dataCollectionEndpoint').outputs.id.value]"
+          },
+          "dataCollectionRuleName": {
+            "value": "[variables('dataCollectionRuleName')]"
+          },
+          "eventsTableName": {
+            "value": "[variables('eventsTableName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "15184710897733860080"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "dataCollectionEndpointId": {
+              "type": "string"
+            },
+            "vendorTag": {
+              "type": "string"
+            },
+            "applicationTag": {
+              "type": "string"
+            },
+            "eventsTableName": {
+              "type": "string"
+            },
+            "dataCollectionRuleName": {
+              "type": "string"
+            },
+            "logAnalyticsWorkspaceId": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Insights/dataCollectionRules",
+              "apiVersion": "2023-03-11",
+              "name": "[parameters('dataCollectionRuleName')]",
+              "location": "[parameters('location')]",
+              "tags": {
+                "vendor": "[parameters('vendorTag')]",
+                "application": "[parameters('applicationTag')]"
+              },
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "kind": "Direct",
+              "properties": {
+                "dataCollectionEndpointId": "[parameters('dataCollectionEndpointId')]",
+                "dataFlows": [
+                  {
+                    "streams": [
+                      "[format('Custom-{0}', parameters('eventsTableName'))]"
+                    ],
+                    "destinations": [
+                      "default"
+                    ],
+                    "transformKql": "            source\n            | extend TimeGenerated = todatetime(created)\n            | extend company_id = tostring(companyId)\n            | extend module = tostring(module)\n            | extend data = todynamic(data)\n            | project module, company_id, data, TimeGenerated\n        ",
+                    "outputStream": "[format('Custom-{0}', parameters('eventsTableName'))]"
+                  }
+                ],
+                "streamDeclarations": {
+                  "[format('Custom-{0}', parameters('eventsTableName'))]": {
+                    "columns": [
+                      {
+                        "name": "created",
+                        "type": "string"
+                      },
+                      {
+                        "name": "module",
+                        "type": "string"
+                      },
+                      {
+                        "name": "companyId",
+                        "type": "string"
+                      },
+                      {
+                        "name": "data",
+                        "type": "dynamic"
+                      }
+                    ]
+                  }
+                },
+                "dataSources": {},
+                "destinations": {
+                  "logAnalytics": [
+                    {
+                      "workspaceResourceId": "[parameters('logAnalyticsWorkspaceId')]",
+                      "name": "default"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "immutableId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Insights/dataCollectionRules', parameters('dataCollectionRuleName')), '2023-03-11').immutableId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "dataCollectionEndpoint"
+      ]
+    },
+    "ingestionFunction": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "ingestion-function-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "vendorTag": {
+            "value": "[variables('vendorTag')]"
+          },
+          "applicationTag": {
+            "value": "[variables('applicationTag')]"
+          },
+          "location": {
+            "value": "[resourceGroup().location]"
+          },
+          "storageAccountName": {
+            "value": "[parameters('storageAccountName')]"
+          },
+          "storageAccountKey": {
+            "value": "[listOutputsWithSecureValues('storageAccount', '2022-09-01').key]"
+          },
+          "eventsStorageContainerName": {
+            "value": "[variables('eventsStorageContainerName')]"
+          },
+          "dataCollectionEndpoint": {
+            "value": "[reference('dataCollectionEndpoint').outputs.endpoint.value]"
+          },
+          "dataCollectionRuleImmutableId": {
+            "value": "[reference('dataCollectionRule').outputs.immutableId.value]"
+          },
+          "ingestionFunctionAppInsightsName": {
+            "value": "[variables('ingestionFunctionAppInsightsName')]"
+          },
+          "ingestionFunctionHostingPlanName": {
+            "value": "[variables('ingestionFunctionHostingPlanName')]"
+          },
+          "ingestionFunctionName": {
+            "value": "[variables('ingestionFunctionName')]"
+          },
+          "ingestionFunctionPackageUrl": {
+            "value": "[variables('ingestionFunctionPackageUrl')]"
+          },
+          "ingestionFunctionSchedule": {
+            "value": "[parameters('ingestionFunctionSchedule')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "17249672787108573707"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "vendorTag": {
+              "type": "string"
+            },
+            "applicationTag": {
+              "type": "string"
+            },
+            "eventsStorageContainerName": {
+              "type": "string"
+            },
+            "ingestionFunctionHostingPlanName": {
+              "type": "string"
+            },
+            "ingestionFunctionAppInsightsName": {
+              "type": "string"
+            },
+            "ingestionFunctionName": {
+              "type": "string"
+            },
+            "ingestionFunctionPackageUrl": {
+              "type": "string"
+            },
+            "ingestionFunctionSchedule": {
+              "type": "string"
+            },
+            "dataCollectionEndpoint": {
+              "type": "string"
+            },
+            "dataCollectionRuleImmutableId": {
+              "type": "string"
+            },
+            "storageAccountName": {
+              "type": "string"
+            },
+            "storageAccountKey": {
+              "type": "securestring"
+            }
+          },
+          "variables": {
+            "ingestionFunctionMetadataStorageConnectionString": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', parameters('storageAccountName'), environment().suffixes.storage, parameters('storageAccountKey'))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Web/serverfarms",
+              "apiVersion": "2024-11-01",
+              "name": "[parameters('ingestionFunctionHostingPlanName')]",
+              "kind": "functionapp,linux",
+              "location": "[parameters('location')]",
+              "tags": {
+                "vendor": "[parameters('vendorTag')]",
+                "application": "[parameters('applicationTag')]"
+              },
+              "sku": {
+                "name": "Y1",
+                "tier": "Dynamic"
+              },
+              "properties": {
+                "reserved": true
+              }
+            },
+            {
+              "type": "Microsoft.Insights/components",
+              "apiVersion": "2020-02-02",
+              "name": "[parameters('ingestionFunctionAppInsightsName')]",
+              "location": "[parameters('location')]",
+              "kind": "other",
+              "tags": {
+                "vendor": "[parameters('vendorTag')]",
+                "application": "[parameters('applicationTag')]"
+              },
+              "properties": {
+                "Application_Type": "other"
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2024-11-01",
+              "name": "[parameters('ingestionFunctionName')]",
+              "location": "[parameters('location')]",
+              "kind": "functionapp,linux",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "tags": {
+                "vendor": "[parameters('vendorTag')]",
+                "application": "[parameters('applicationTag')]"
+              },
+              "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('ingestionFunctionHostingPlanName'))]",
+                "publicNetworkAccess": "Enabled",
+                "reserved": true,
+                "siteConfig": {
+                  "linuxFxVersion": "Node|20",
+                  "appSettings": [
+                    {
+                      "name": "FUNCTIONS_WORKER_RUNTIME",
+                      "value": "node"
+                    },
+                    {
+                      "name": "WEBSITE_RUN_FROM_PACKAGE",
+                      "value": "[parameters('ingestionFunctionPackageUrl')]"
+                    },
+                    {
+                      "name": "TIMER_SCHEDULE",
+                      "value": "[parameters('ingestionFunctionSchedule')]"
+                    },
+                    {
+                      "name": "WEBSITE_CONTENTSHARE",
+                      "value": "[toLower(parameters('ingestionFunctionName'))]"
+                    },
+                    {
+                      "name": "FUNCTIONS_EXTENSION_VERSION",
+                      "value": "~4"
+                    },
+                    {
+                      "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                      "value": "[variables('ingestionFunctionMetadataStorageConnectionString')]"
+                    },
+                    {
+                      "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+                      "value": "[reference(resourceId('Microsoft.Insights/components', parameters('ingestionFunctionAppInsightsName')), '2020-02-02').InstrumentationKey]"
+                    },
+                    {
+                      "name": "AzureWebJobsStorage",
+                      "value": "[variables('ingestionFunctionMetadataStorageConnectionString')]"
+                    },
+                    {
+                      "name": "STORAGE_ACCOUNT_URL",
+                      "value": "[format('https://{0}.blob.{1}', parameters('storageAccountName'), environment().suffixes.storage)]"
+                    },
+                    {
+                      "name": "EVENTS_STORAGE_CONTAINER_NAME",
+                      "value": "[parameters('eventsStorageContainerName')]"
+                    },
+                    {
+                      "name": "DATA_COLLECTION_ENDPOINT",
+                      "value": "[parameters('dataCollectionEndpoint')]"
+                    },
+                    {
+                      "name": "DATA_COLLECTION_RULE_ID",
+                      "value": "[parameters('dataCollectionRuleImmutableId')]"
+                    }
+                  ]
+                },
+                "httpsOnly": true
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/components', parameters('ingestionFunctionAppInsightsName'))]",
+                "[resourceId('Microsoft.Web/serverfarms', parameters('ingestionFunctionHostingPlanName'))]"
+              ]
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "dataCollectionEndpoint",
+        "dataCollectionRule",
+        "storageAccount"
+      ]
+    },
+    "ruleAssignments": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "role-assignments-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "logAnalyticsWorkspaceName": {
+            "value": "[parameters('logAnalyticsWorkspaceName')]"
+          },
+          "dataCollectionRuleName": {
+            "value": "[variables('dataCollectionRuleName')]"
+          },
+          "ingestionFunctionName": {
+            "value": "[variables('ingestionFunctionName')]"
+          },
+          "storageAccountName": {
+            "value": "[parameters('storageAccountName')]"
+          },
+          "eventsTableName": {
+            "value": "[variables('eventsTableName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "languageVersion": "2.0",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "11183601814537693770"
+            }
+          },
+          "parameters": {
+            "dataCollectionRuleName": {
+              "type": "string"
+            },
+            "ingestionFunctionName": {
+              "type": "string"
+            },
+            "storageAccountName": {
+              "type": "string"
+            },
+            "eventsTableName": {
+              "type": "string"
+            },
+            "logAnalyticsWorkspaceName": {
+              "type": "string"
+            }
+          },
+          "variables": {
+            "monitoringMetricsPublisherRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '3913510d-42f4-4e42-8a64-420c390055eb')]",
+            "storageBlobDataContributorRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')]"
+          },
+          "resources": {
+            "dataCollectionRule": {
+              "existing": true,
+              "type": "Microsoft.Insights/dataCollectionRules",
+              "apiVersion": "2023-03-11",
+              "name": "[parameters('dataCollectionRuleName')]"
+            },
+            "ingestionFunction": {
+              "existing": true,
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2024-04-01",
+              "name": "[parameters('ingestionFunctionName')]"
+            },
+            "logAnalyticsWorkspace": {
+              "existing": true,
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2021-06-01",
+              "name": "[parameters('logAnalyticsWorkspaceName')]"
+            },
+            "eventsTable": {
+              "existing": true,
+              "type": "Microsoft.OperationalInsights/workspaces/tables",
+              "apiVersion": "2023-09-01",
+              "name": "[format('{0}/{1}', parameters('logAnalyticsWorkspaceName'), parameters('eventsTableName'))]"
+            },
+            "storageAccount": {
+              "existing": true,
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2022-09-01",
+              "name": "[parameters('storageAccountName')]"
+            },
+            "ingestionFunctionAccessToTempStorage": {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Storage/storageAccounts/{0}', parameters('storageAccountName'))]",
+              "name": "[guid(subscription().subscriptionId, resourceGroup().id, parameters('ingestionFunctionName'), parameters('storageAccountName'), 'storage-blob-contributor')]",
+              "properties": {
+                "roleDefinitionId": "[variables('storageBlobDataContributorRoleId')]",
+                "principalId": "[reference('ingestionFunction', '2024-04-01', 'full').identity.principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "ingestionFunction"
+              ]
+            },
+            "ingestionFunctionAccessToDcr": {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Insights/dataCollectionRules/{0}', parameters('dataCollectionRuleName'))]",
+              "name": "[guid(subscription().subscriptionId, resourceGroup().id, parameters('ingestionFunctionName'), parameters('dataCollectionRuleName'), 'MonitoringMetricsPublisher')]",
+              "properties": {
+                "roleDefinitionId": "[variables('monitoringMetricsPublisherRoleId')]",
+                "principalId": "[reference('ingestionFunction', '2024-04-01', 'full').identity.principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "ingestionFunction"
+              ]
+            },
+            "dcrAccessToSecurityEvents": {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.OperationalInsights/workspaces/{0}/tables/{1}', parameters('logAnalyticsWorkspaceName'), parameters('eventsTableName'))]",
+              "name": "[guid(subscription().subscriptionId, resourceGroup().id, parameters('dataCollectionRuleName'), parameters('eventsTableName'), 'monitoring-metrics-publisher')]",
+              "properties": {
+                "roleDefinitionId": "[variables('monitoringMetricsPublisherRoleId')]",
+                "principalId": "[reference('dataCollectionRule', '2023-03-11', 'full').identity.principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "dataCollectionRule"
+              ]
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "dataCollectionRule",
+        "eventsTable",
+        "ingestionFunction"
+      ]
+    }
+  }
+}
