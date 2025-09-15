@@ -5,7 +5,7 @@
   "Description": "TODO",
   "WorkbookBladeDescription": "This Microsoft Sentinel Solution installs workbooks. Workbooks provide a flexible canvas for data monitoring, analysis, and creating rich visual reports within the Azure portal. They allow you to combine one or more data sources from Microsoft Sentinel into unified interactive experience.",
   "Data Connectors": [
-    "Data Connectors/GravityZone_API_FunctionApp.json"
+    "Data Connectors/GravityZone_API.json"
   ],
   "Workbooks": [
   ],

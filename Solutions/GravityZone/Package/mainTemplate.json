@@ -124,7 +124,7 @@
                   },
                   "instructionSteps": [
                     {
-                      "description": "To proceed with the Microsoft Sentinel setup\n\n1. Click the **Deploy to Azure** button below. \n\n\t\n\n[![Deploy To Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fbitdefender%2FAzure-Sentinel%2Fmaster%2FSolutions%2FGravityZone%2FData%20Connectors%2Fazuredeploy_GravityZone_API_FunctionApp.json)\n\n2. **Please note that after the successful deployment, the system pulls Activity Log data every 1 minute by default.**"
+                      "description": "To proceed with the Microsoft Sentinel setup\n\n1. Click the **Deploy to Azure** button below. \n\n\t\n\n[![Deploy To Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fbitdefender%2FAzure-Sentinel%2Frefs%2Fheads%2Ffeature%2Fgravityzone-sentinel-beta%2FSolutions%2FGravityZone%2FData%20Connectors%2Fazuredeploy_GravityZone_API.json)\n\n2. **Please note that after the successful deployment, the system pulls Activity Log data every 1 minute by default.**"
                     }
                   ]
                 }
@@ -259,7 +259,7 @@
           },
           "instructionSteps": [
             {
-              "description": "To proceed with the Microsoft Sentinel setup\n\n1. Click the **Deploy to Azure** button below. \n\n\t\n\n[![Deploy To Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fbitdefender%2FAzure-Sentinel%2Fmaster%2FSolutions%2FGravityZone%2FData%20Connectors%2Fazuredeploy_GravityZone_API_FunctionApp.json)\n\n2. **Please note that after the successful deployment, the system pulls Activity Log data every 1 minute by default.**"
+              "description": "To proceed with the Microsoft Sentinel setup\n\n1. Click the **Deploy to Azure** button below. \n\n\t\n\n[![Deploy To Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fbitdefender%2FAzure-Sentinel%2Frefs%2Fheads%2Ffeature%2Fgravityzone-sentinel-beta%2FSolutions%2FGravityZone%2FData%20Connectors%2Fazuredeploy_GravityZone_API.json)\n\n2. **Please note that after the successful deployment, the system pulls Activity Log data every 1 minute by default.**"
             }
           ],
           "id": "[variables('_uiConfigId1')]",
